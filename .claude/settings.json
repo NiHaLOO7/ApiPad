@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(cargo add *)",
+      "Bash(which chromium-cli *)",
+      "Read(//Applications/**)",
+      "Read(//tmp/apipad-screenshots/**)",
+      "Read(//private/tmp/apipad-screenshots/**)",
+      "Bash(mkdir -p /Users/nihalkumar.jha/Desktop/Codes/apipad/docs *)",
+      "Bash(pkill -f \"vite\")"
+    ],
+    "additionalDirectories": [
+      "/private/tmp/apipad-screenshots"
+    ]
+  }
+}
