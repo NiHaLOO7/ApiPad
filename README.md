@@ -13,6 +13,10 @@ A lightweight, fast API testing desktop app built with Tauri + React. Think Post
 - **Request history** — Last 50 requests auto-saved in the sidebar
 - **Response viewer** — Pretty-printed JSON body + response headers with status code and time
 
+## Demo
+
+![ApiPad demo](docs/demo.gif)
+
 ## Screenshot
 
 ![ApiPad](docs/screenshot.png)
