@@ -16,7 +16,8 @@ jobs:
             artifact: "ApiPad_*.AppImage"
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: "ApiPad_*.msi"
+            artifact: "ApiPad_*.exe"
+            bundles: nsis
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact: "ApiPad_*.dmg"
@@ -66,10 +67,10 @@ jobs:
             See the [CHANGELOG](https://github.com/NiHaLOO7/ApiPad/blob/main/CHANGELOG.md) for details.
 
             ### Installation
-            - **Windows** — download `.msi`, run installer
+            - **Windows** — download `.exe`, run installer
             - **macOS Apple Silicon** — download `aarch64.dmg`, drag to Applications
             - **macOS Intel** — download `x64.dmg`, drag to Applications
             - **Linux** — download `.AppImage`, `chmod +x`, run it
           releaseDraft: false
           prerelease: false
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.target }}${{ matrix.bundles && format(' --bundles {0}', matrix.bundles) || '' }}
