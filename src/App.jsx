@@ -1,8 +1,29 @@
 import { useState, useRef, useEffect } from "react";
-import { fetch } from "@tauri-apps/plugin-http";
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
 import "./App.css";
+
+// Tauri plugins — loaded lazily so the app doesn't crash outside Tauri
+const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+async function tauriFetch(url, options) {
+  const { fetch: tFetch } = await import("@tauri-apps/plugin-http");
+  return tFetch(url, options);
+}
+
+async function saveJsonToFile(data, defaultName) {
+  const json = JSON.stringify(data, null, 2);
+  if (!isTauri()) {
+    // browser fallback
+    const uri = `data:application/json;charset=utf-8,${encodeURIComponent(json)}`;
+    const a = document.createElement("a");
+    a.href = uri; a.download = defaultName;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    return;
+  }
+  const { save } = await import("@tauri-apps/plugin-dialog");
+  const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+  const path = await save({ defaultPath: defaultName, filters: [{ name: "JSON", extensions: ["json"] }] });
+  if (path) await writeTextFile(path, json);
+}
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
@@ -154,19 +175,6 @@ function SaveModal({ collections, onClose, onSave }) {
   );
 }
 
-async function saveJsonToFile(data, defaultName) {
-  const json = JSON.stringify(data, null, 2);
-  try {
-    const path = await save({
-      defaultPath: defaultName,
-      filters: [{ name: "JSON", extensions: ["json"] }],
-    });
-    if (path) await writeTextFile(path, json);
-  } catch {
-    // user cancelled or error — silently ignore
-  }
-}
-
 function ExportModal({ collections, onClose }) {
   const [selected, setSelected] = useState(new Set(collections.map(c => c.id)));
 
@@ -300,11 +308,14 @@ export default function App() {
 
       let text, resHeaders = {};
       try {
-        const res = await fetch(finalUrl, options);
+        const res = isTauri()
+          ? await tauriFetch(finalUrl, options)
+          : await window.fetch(finalUrl, options);
         text = await res.text();
         setStatusCode(res.status);
         res.headers.forEach((val, key) => { resHeaders[key] = val; });
-      } catch {
+      } catch (fetchErr) {
+        // Tauri fetch failed — fall back to window.fetch (may hit CORS)
         const res = await window.fetch(finalUrl, options);
         text = await res.text();
         setStatusCode(res.status);
