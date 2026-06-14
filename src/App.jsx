@@ -640,30 +640,42 @@ export default function App() {
               )}
               {bodyTab === "headers" && (
                 <div className="space-y-1">
-                  <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="grid gap-2 mb-1" style={{gridTemplateColumns: "1fr 1fr 20px"}}>
                     <span className="text-xs text-gray-500 uppercase font-semibold">Key</span>
                     <span className="text-xs text-gray-500 uppercase font-semibold">Value</span>
+                    <span />
                   </div>
                   {headers.map((h, i) => (
-                    <div key={i} className="grid grid-cols-2 gap-2">
+                    <div key={i} className="grid gap-2 items-center group" style={{gridTemplateColumns: "1fr 1fr 20px"}}>
                       <input value={h.key} onChange={e => updateHeader(i, "key", e.target.value)} className="bg-[#2d2d2d] border border-[#3c3c3c] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-[#555]" placeholder="Content-Type" spellCheck={false} />
                       <input value={h.value} onChange={e => updateHeader(i, "value", e.target.value)} className="bg-[#2d2d2d] border border-[#3c3c3c] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-[#555]" placeholder="application/json" spellCheck={false} />
+                      <button
+                        onClick={() => setHeaders(prev => prev.length === 1 ? [{ key: "", value: "" }] : prev.filter((_, idx) => idx !== i))}
+                        className="text-gray-700 hover:text-red-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                      >×</button>
                     </div>
                   ))}
+                  <button onClick={() => setHeaders(prev => [...prev, { key: "", value: "" }])} className="mt-1 text-[11px] text-gray-600 hover:text-gray-400 transition-colors">+ Add Header</button>
                 </div>
               )}
               {bodyTab === "params" && (
                 <div className="space-y-1">
-                  <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="grid gap-2 mb-1" style={{gridTemplateColumns: "1fr 1fr 20px"}}>
                     <span className="text-xs text-gray-500 uppercase font-semibold">Key</span>
                     <span className="text-xs text-gray-500 uppercase font-semibold">Value</span>
+                    <span />
                   </div>
                   {params.map((p, i) => (
-                    <div key={i} className="grid grid-cols-2 gap-2">
+                    <div key={i} className="grid gap-2 items-center group" style={{gridTemplateColumns: "1fr 1fr 20px"}}>
                       <input value={p.key} onChange={e => updateParam(i, "key", e.target.value)} className="bg-[#2d2d2d] border border-[#3c3c3c] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-[#555]" placeholder="page" spellCheck={false} />
                       <input value={p.value} onChange={e => updateParam(i, "value", e.target.value)} className="bg-[#2d2d2d] border border-[#3c3c3c] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-[#555]" placeholder="1" spellCheck={false} />
+                      <button
+                        onClick={() => setParams(prev => prev.length === 1 ? [{ key: "", value: "" }] : prev.filter((_, idx) => idx !== i))}
+                        className="text-gray-700 hover:text-red-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                      >×</button>
                     </div>
                   ))}
+                  <button onClick={() => setParams(prev => [...prev, { key: "", value: "" }])} className="mt-1 text-[11px] text-gray-600 hover:text-gray-400 transition-colors">+ Add Param</button>
                 </div>
               )}
               {bodyTab === "auth" && <AuthPanel auth={auth} setAuth={setAuth} />}
