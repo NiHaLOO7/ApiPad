@@ -1,6 +1,33 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import JsonEditor from "./JsonEditor";
 import "./App.css";
+
+function useDrag({ onDelta, direction }) {
+  const dragging = useRef(false);
+  const last = useRef(0);
+
+  const onMouseDown = useCallback((e) => {
+    dragging.current = true;
+    last.current = direction === "horizontal" ? e.clientX : e.clientY;
+    e.preventDefault();
+
+    const onMove = (ev) => {
+      if (!dragging.current) return;
+      const curr = direction === "horizontal" ? ev.clientX : ev.clientY;
+      onDelta(curr - last.current);
+      last.current = curr;
+    };
+    const onUp = () => {
+      dragging.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [onDelta, direction]);
+
+  return onMouseDown;
+}
 
 // Tauri plugins — loaded lazily so the app doesn't crash outside Tauri
 const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -71,6 +98,31 @@ function StatusBadge({ code }) {
 
 const inputCls = "bg-[#2d2d2d] border border-[#3c3c3c] rounded px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-[#555] w-full";
 const labelCls = "text-xs text-gray-500 mb-1 block";
+
+function Divider({ layout, onDelta }) {
+  const onMouseDown = useDrag({ onDelta, direction: layout === "horizontal" ? "horizontal" : "vertical" });
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className={[
+        "shrink-0 bg-[#3c3c3c] hover:bg-[#0e639c] transition-colors group relative",
+        layout === "horizontal"
+          ? "w-[3px] cursor-col-resize"
+          : "h-[3px] cursor-row-resize",
+      ].join(" ")}
+    >
+      {/* center grip dots */}
+      <div className={[
+        "absolute flex items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
+        layout === "horizontal"
+          ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex-col"
+          : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex-row",
+      ].join(" ")}>
+        {[0,1,2].map(i => <span key={i} className="w-0.5 h-0.5 rounded-full bg-white" />)}
+      </div>
+    </div>
+  );
+}
 
 function AuthPanel({ auth, setAuth }) {
   const set = (key, val) => setAuth(prev => ({ ...prev, [key]: val }));
@@ -249,6 +301,9 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [activeHistoryId, setActiveHistoryId] = useState(null);
   const [sidebarTab, setSidebarTab] = useState("collections");
+  const [layout, setLayout] = useState("horizontal"); // "horizontal" | "vertical"
+  const [splitPct, setSplitPct] = useState(45); // request pane size %
+  const splitContainerRef = useRef(null);
 
   const [collections, setCollections] = useState(() => {
     try { return JSON.parse(localStorage.getItem("apipad_collections") || "[]"); }
@@ -614,13 +669,47 @@ export default function App() {
             className="bg-[#0e639c] hover:bg-[#1177bb] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-1.5 rounded transition-colors shrink-0">
             {loading ? "Sending…" : "Send"}
           </button>
+
+          {/* Layout toggle */}
+          <div className="flex shrink-0 border border-[#3c3c3c] rounded overflow-hidden">
+            <button
+              onClick={() => { setLayout("horizontal"); setSplitPct(45); }}
+              title="Side by side"
+              className={`px-2 py-1.5 text-xs transition-colors ${layout === "horizontal" ? "bg-[#3c3c3c] text-white" : "text-gray-500 hover:text-gray-300"}`}
+            >
+              {/* horizontal split icon */}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                <rect x="0" y="0" width="6" height="14" rx="1" opacity="0.7"/>
+                <rect x="8" y="0" width="6" height="14" rx="1" opacity="0.7"/>
+              </svg>
+            </button>
+            <button
+              onClick={() => { setLayout("vertical"); setSplitPct(45); }}
+              title="Top / Bottom"
+              className={`px-2 py-1.5 text-xs transition-colors ${layout === "vertical" ? "bg-[#3c3c3c] text-white" : "text-gray-500 hover:text-gray-300"}`}
+            >
+              {/* vertical split icon */}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                <rect x="0" y="0" width="14" height="6" rx="1" opacity="0.7"/>
+                <rect x="0" y="8" width="14" height="6" rx="1" opacity="0.7"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* SPLIT PANE */}
-        <div className="flex-1 flex overflow-hidden">
-
+        <div
+          ref={splitContainerRef}
+          className={`flex-1 overflow-hidden ${layout === "horizontal" ? "flex flex-row" : "flex flex-col"}`}
+        >
           {/* REQUEST PANE */}
-          <div className="w-[45%] flex flex-col border-r border-[#3c3c3c] overflow-hidden">
+          <div
+            className="flex flex-col overflow-hidden shrink-0"
+            style={layout === "horizontal"
+              ? { width: `${splitPct}%` }
+              : { height: `${splitPct}%` }
+            }
+          >
             <div className="flex border-b border-[#3c3c3c] bg-[#252526]">
               {["params", "headers", "body", "auth"].map(tab => (
                 <button key={tab} onClick={() => setBodyTab(tab)}
@@ -650,10 +739,7 @@ export default function App() {
                     <div key={i} className="grid gap-2 items-center group" style={{gridTemplateColumns: "1fr 1fr 20px"}}>
                       <input value={h.key} onChange={e => updateHeader(i, "key", e.target.value)} className="bg-[#2d2d2d] border border-[#3c3c3c] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-[#555]" placeholder="Content-Type" spellCheck={false} />
                       <input value={h.value} onChange={e => updateHeader(i, "value", e.target.value)} className="bg-[#2d2d2d] border border-[#3c3c3c] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-[#555]" placeholder="application/json" spellCheck={false} />
-                      <button
-                        onClick={() => setHeaders(prev => prev.length === 1 ? [{ key: "", value: "" }] : prev.filter((_, idx) => idx !== i))}
-                        className="text-gray-700 hover:text-red-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity"
-                      >×</button>
+                      <button onClick={() => setHeaders(prev => prev.length === 1 ? [{ key: "", value: "" }] : prev.filter((_, idx) => idx !== i))} className="text-gray-700 hover:text-red-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                     </div>
                   ))}
                   <button onClick={() => setHeaders(prev => [...prev, { key: "", value: "" }])} className="mt-1 text-[11px] text-gray-600 hover:text-gray-400 transition-colors">+ Add Header</button>
@@ -670,10 +756,7 @@ export default function App() {
                     <div key={i} className="grid gap-2 items-center group" style={{gridTemplateColumns: "1fr 1fr 20px"}}>
                       <input value={p.key} onChange={e => updateParam(i, "key", e.target.value)} className="bg-[#2d2d2d] border border-[#3c3c3c] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-[#555]" placeholder="page" spellCheck={false} />
                       <input value={p.value} onChange={e => updateParam(i, "value", e.target.value)} className="bg-[#2d2d2d] border border-[#3c3c3c] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-[#555]" placeholder="1" spellCheck={false} />
-                      <button
-                        onClick={() => setParams(prev => prev.length === 1 ? [{ key: "", value: "" }] : prev.filter((_, idx) => idx !== i))}
-                        className="text-gray-700 hover:text-red-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity"
-                      >×</button>
+                      <button onClick={() => setParams(prev => prev.length === 1 ? [{ key: "", value: "" }] : prev.filter((_, idx) => idx !== i))} className="text-gray-700 hover:text-red-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                     </div>
                   ))}
                   <button onClick={() => setParams(prev => [...prev, { key: "", value: "" }])} className="mt-1 text-[11px] text-gray-600 hover:text-gray-400 transition-colors">+ Add Param</button>
@@ -682,6 +765,18 @@ export default function App() {
               {bodyTab === "auth" && <AuthPanel auth={auth} setAuth={setAuth} />}
             </div>
           </div>
+
+          {/* DIVIDER */}
+          <Divider
+            layout={layout}
+            onDelta={delta => {
+              const el = splitContainerRef.current;
+              if (!el) return;
+              const total = layout === "horizontal" ? el.offsetWidth : el.offsetHeight;
+              const newPct = Math.min(80, Math.max(20, splitPct + (delta / total) * 100));
+              setSplitPct(newPct);
+            }}
+          />
 
           {/* RESPONSE PANE */}
           <div className="flex-1 flex flex-col overflow-hidden">
