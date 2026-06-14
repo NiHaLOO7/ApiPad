@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import JsonEditor from "./JsonEditor";
 import "./App.css";
 
 // Tauri plugins — loaded lazily so the app doesn't crash outside Tauri
@@ -634,9 +635,9 @@ export default function App() {
 
             <div className="flex-1 overflow-auto p-3">
               {bodyTab === "body" && (
-                <textarea value={body} onChange={e => setBody(e.target.value)}
-                  className="w-full h-full bg-[#1e1e1e] border border-[#3c3c3c] rounded p-3 font-mono text-sm focus:outline-none focus:border-[#555] resize-none text-[#ce9178]"
-                  placeholder={'{\n  "key": "value"\n}'} spellCheck={false} />
+                <div className="-m-3 h-[calc(100%+24px)]">
+                  <JsonEditor value={body} onChange={setBody} />
+                </div>
               )}
               {bodyTab === "headers" && (
                 <div className="space-y-1">
