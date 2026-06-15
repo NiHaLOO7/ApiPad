@@ -32,9 +32,13 @@ function useDrag({ onDelta, direction }) {
 // Tauri plugins — loaded lazily so the app doesn't crash outside Tauri
 const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+let _tauriFetch = null;
 async function tauriFetch(url, options) {
-  const { fetch: tFetch } = await import("@tauri-apps/plugin-http");
-  return tFetch(url, options);
+  if (!_tauriFetch) {
+    const mod = await import("@tauri-apps/plugin-http");
+    _tauriFetch = mod.fetch;
+  }
+  return _tauriFetch(url, options);
 }
 
 async function saveJsonToFile(data, defaultName) {
@@ -356,27 +360,23 @@ export default function App() {
         finalUrl = `${url}${url.includes("?") ? "&" : "?"}${qs}`;
       }
 
-      const options = { method, headers: reqHeaders };
       if (!["GET", "HEAD", "OPTIONS"].includes(method) && body.trim()) {
-        options.body = body;
-        if (!reqHeaders["Content-Type"]) options.headers["Content-Type"] = "application/json";
+        if (!reqHeaders["Content-Type"]) reqHeaders["Content-Type"] = "application/json";
       }
 
+      const options = {
+        method,
+        headers: reqHeaders,
+        ...((!["GET", "HEAD", "OPTIONS"].includes(method) && body.trim()) ? { body } : {}),
+      };
+
       let text, resHeaders = {};
-      try {
-        const res = isTauri()
-          ? await tauriFetch(finalUrl, options)
-          : await window.fetch(finalUrl, options);
-        text = await res.text();
-        setStatusCode(res.status);
-        res.headers.forEach((val, key) => { resHeaders[key] = val; });
-      } catch (fetchErr) {
-        // Tauri fetch failed — fall back to window.fetch (may hit CORS)
-        const res = await window.fetch(finalUrl, options);
-        text = await res.text();
-        setStatusCode(res.status);
-        res.headers.forEach((val, key) => { resHeaders[key] = val; });
-      }
+      const res = isTauri()
+        ? await tauriFetch(finalUrl, options)
+        : await window.fetch(finalUrl, options);
+      text = await res.text();
+      setStatusCode(res.status);
+      res.headers.forEach((val, key) => { resHeaders[key] = val; });
 
       setResponseTime(Math.round(performance.now() - start));
       setResponse(formatJson(text));
@@ -385,7 +385,8 @@ export default function App() {
       setHistory(prev => [entry, ...prev.slice(0, 49)]);
       setActiveHistoryId(entry.id);
     } catch (err) {
-      setError(err.message || "Request failed");
+      console.error("Request error:", err);
+      setError(err?.message || err?.toString() || "Request failed");
       setResponseTime(Math.round(performance.now() - start));
     } finally {
       setLoading(false);
@@ -796,29 +797,28 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-3 bg-[#181818]">
+            <div className="flex-1 overflow-hidden flex flex-col bg-[#181818]">
               {loading && <div className="flex items-center justify-center h-full text-gray-600 text-sm">Sending request…</div>}
-              {!loading && error && <div className="text-red-400 font-mono text-sm p-2 bg-[#1e1e1e] rounded border border-[#3c3c3c]">{error}</div>}
+              {!loading && error && <div className="text-red-400 font-mono text-sm p-3 m-3 bg-[#1e1e1e] rounded border border-[#3c3c3c]">{error}</div>}
               {!loading && !error && response === null && <div className="flex items-center justify-center h-full text-gray-700 text-sm">Send a request to see the response</div>}
               {!loading && !error && response !== null && responseTab === "body" && (
-                <pre className="font-mono text-sm text-[#9cdcfe] whitespace-pre-wrap break-all leading-relaxed">{response}</pre>
+                <JsonEditor value={response} readOnly={true} showToolbar={true} />
               )}
-              {!loading && !error && responseHeaders !== null && responseTab === "headers" && (
-                <div className="space-y-1">
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <span className="text-xs text-gray-500 uppercase font-semibold">Key</span>
-                    <span className="text-xs text-gray-500 uppercase font-semibold">Value</span>
-                  </div>
-                  {Object.entries(responseHeaders).map(([k, v]) => (
-                    <div key={k} className="grid grid-cols-2 gap-2 py-1 border-b border-[#2a2a2a]">
-                      <span className="text-xs font-mono text-[#9cdcfe] truncate">{k}</span>
-                      <span className="text-xs font-mono text-[#ce9178] truncate">{v}</span>
+              {!loading && !error && responseTab === "headers" && (
+                responseHeaders === null
+                  ? <div className="flex items-center justify-center h-full text-gray-700 text-sm">Send a request to see response headers</div>
+                  : <div className="overflow-auto p-3 space-y-1">
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <span className="text-xs text-gray-500 uppercase font-semibold">Key</span>
+                        <span className="text-xs text-gray-500 uppercase font-semibold">Value</span>
+                      </div>
+                      {Object.entries(responseHeaders).map(([k, v]) => (
+                        <div key={k} className="grid grid-cols-2 gap-2 py-1 border-b border-[#2a2a2a]">
+                          <span className="text-xs font-mono text-[#9cdcfe] truncate">{k}</span>
+                          <span className="text-xs font-mono text-[#ce9178] break-all">{v}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-              {!loading && !error && responseHeaders === null && responseTab === "headers" && (
-                <div className="flex items-center justify-center h-full text-gray-700 text-sm">Send a request to see response headers</div>
               )}
             </div>
           </div>

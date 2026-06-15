@@ -6,7 +6,25 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "http:default",
+    "http:allow-fetch-cancel",
+    "http:allow-fetch-send",
+    "http:allow-fetch-read-body",
+    "http:allow-fetch-cancel-body",
+    {
+      "identifier": "http:allow-fetch",
+      "allow": [
+        { "url": "https://**" },
+        { "url": "http://**/**" },
+        { "url": "http://localhost" },
+        { "url": "http://localhost/**" },
+        { "url": "http://localhost:*" },
+        { "url": "http://localhost:*/**" },
+        { "url": "http://127.0.0.1" },
+        { "url": "http://127.0.0.1/**" },
+        { "url": "http://127.0.0.1:*" },
+        { "url": "http://127.0.0.1:*/**" }
+      ]
+    },
     "dialog:default",
     "fs:default"
   ]
