@@ -20,9 +20,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             bundles: nsis
           - os: macos-latest
-            target: aarch64-apple-darwin
-          - os: macos-latest
-            target: x86_64-apple-darwin
+            target: universal-apple-darwin
 
     runs-on: ${{ matrix.os }}
 
@@ -40,8 +38,12 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Add Rust target
-        run: rustup target add ${{ matrix.target }}
+      - name: Add Rust target(s)
+        run: |
+          rustup target add ${{ matrix.target }}
+          if [ "${{ matrix.target }}" = "universal-apple-darwin" ]; then
+            rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          fi
 
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-22.04'
@@ -82,8 +84,7 @@ jobs:
             | Platform | File |
             |---|---|
             | Windows | `ApiPad_*_x64-setup.exe` |
-            | macOS Apple Silicon | `ApiPad_*_aarch64.dmg` |
-            | macOS Intel | `ApiPad_*_x64.dmg` |
+            | macOS (Universal) | `ApiPad_*_universal.dmg` — runs on both Apple Silicon and Intel |
             | Linux | `ApiPad_*_amd64.AppImage` or `.deb` |
 
             ### Install via Homebrew (macOS)
