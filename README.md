@@ -23,16 +23,19 @@ A lightweight, fast API testing desktop app built with Tauri + React. Think Post
 
 ## Getting Started
 
-### Prerequisites
+### One-command setup
 
-- [Node.js](https://nodejs.org/) v18+
-- [Rust](https://www.rust-lang.org/tools/install) (stable)
-- [Tauri CLI](https://tauri.app/start/prerequisites/)
+```bash
+git clone https://github.com/NiHaLOO7/ApiPad.git
+cd ApiPad
+./setup.sh
+```
+
+The script installs everything you need — Node.js 18+, Rust, and Linux system dependencies (if needed) — then runs `npm install`. Works on macOS and Ubuntu/Debian.
 
 ### Run in development
 
 ```bash
-npm install
 npm run tauri dev
 ```
 
@@ -43,6 +46,14 @@ npm run tauri build
 ```
 
 The installer will be in `src-tauri/target/release/bundle/`.
+
+### Manual prerequisites
+
+If you prefer to install manually:
+
+- [Node.js](https://nodejs.org/) v18+
+- [Rust](https://www.rust-lang.org/tools/install) (stable)
+- [Tauri prerequisites](https://tauri.app/start/prerequisites/) (Linux only: WebKit + system libs)
 
 ## Collections
 
