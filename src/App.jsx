@@ -302,7 +302,10 @@ export default function App() {
   const [error, setError] = useState(null);
   const [responseTab, setResponseTab] = useState("body");
 
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("apipad_history") || "[]"); }
+    catch { return []; }
+  });
   const [activeHistoryId, setActiveHistoryId] = useState(null);
   const [sidebarTab, setSidebarTab] = useState("collections");
   const [layout, setLayout] = useState("horizontal"); // "horizontal" | "vertical"
@@ -323,6 +326,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("apipad_collections", JSON.stringify(collections));
   }, [collections]);
+
+  useEffect(() => {
+    localStorage.setItem("apipad_history", JSON.stringify(history));
+  }, [history]);
 
   const buildAuthHeaders = (h) => {
     const out = { ...h };
@@ -479,7 +486,11 @@ export default function App() {
         if (data.apipad_version) {
           const cols = Array.isArray(data.collections) ? data.collections
             : data.collection ? [data.collection] : [];
-          const imported = cols.map(c => ({ ...c, id: crypto.randomUUID() }));
+          const imported = cols.map(c => ({
+            ...c,
+            id: crypto.randomUUID(),
+            requests: (c.requests || []).map(r => ({ ...r, id: r.id || crypto.randomUUID() })),
+          }));
           setCollections(prev => [...prev, ...imported]);
           const expanded = {};
           imported.forEach(c => { expanded[c.id] = true; });
